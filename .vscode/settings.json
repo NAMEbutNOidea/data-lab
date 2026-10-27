@@ -1,0 +1,15 @@
+{
+  "files.encoding": "utf8",
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/*.pyc": true
+  },
+  "search.exclude": {
+    "output/**": true
+  },
+  "python.terminal.executeInFileDir": false,
+  "[python]": {
+    "editor.tabSize": 4,
+    "editor.formatOnSave": false
+  }
+}

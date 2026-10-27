@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>DataLab · 数据显示与分析</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- ================= 顶栏 ================= -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 20V4"></path>
+          <path d="M3 20h18"></path>
+          <path d="M6.5 16.5 11 10.5l3.4 2.9L20 6.5"></path>
+          <circle cx="11" cy="10.5" r="1.3" fill="currentColor" stroke="none"></circle>
+          <circle cx="14.4" cy="13.4" r="1.3" fill="currentColor" stroke="none"></circle>
+        </svg>
+      </span>
+      <div class="brand-text">
+        <p class="eyebrow">本地工作台 · 数据不出机器</p>
+        <h1>DataLab<span>数据显示与分析</span></h1>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <span id="envStatus" class="env-status" title="服务端环境状态"><i class="dot"></i><span id="envText">连接中…</span></span>
+      <input id="fileInput" type="file" accept=".xlsx,.xls,.csv" hidden>
+      <button id="btnImport" class="btn btn-primary" type="button"><svg class="btn-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v8"/><path d="M5 7l3 3 3-3"/><path d="M2.5 12.5h11"/></svg>导入数据</button>
+      <div class="menu-wrap">
+        <button id="btnExportImg" class="btn" type="button" disabled>导出图片<svg class="btn-ico right" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6.5 8 10.5 12 6.5"/></svg></button>
+        <div id="exportImgMenu" class="menu" hidden>
+          <button class="menu-item" type="button" data-fmt="png"><b>PNG</b><small>位图 · 当前 DPI</small></button>
+          <button class="menu-item" type="button" data-fmt="svg"><b>SVG</b><small>矢量 · 可再编辑</small></button>
+          <button class="menu-item" type="button" data-fmt="pdf"><b>PDF</b><small>矢量 · 投稿常用</small></button>
+          <button class="menu-item" type="button" data-fmt="eps"><b>EPS</b><small>矢量 · 期刊要求</small></button>
+        </div>
+      </div>
+      <div class="menu-wrap">
+        <button id="btnExportData" class="btn" type="button">导出数据<svg class="btn-ico right" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6.5 8 10.5 12 6.5"/></svg></button>
+        <div id="exportDataMenu" class="menu" hidden>
+          <button class="menu-item" type="button" data-fmt="xlsx"><b>Excel</b><small>.xlsx 工作簿</small></button>
+          <button class="menu-item" type="button" data-fmt="csv"><b>CSV</b><small>逗号分隔 · UTF-8</small></button>
+        </div>
+      </div>
+      <button id="btnDark" class="btn btn-icon" type="button" title="切换界面暗色模式">暗</button>
+    </div>
+  </header>
+
+  <!-- ================= 主体三栏 ================= -->
+  <main class="main">
+
+    <!-- 左栏：数据源窗口 -->
+    <aside class="left-column">
+      <section class="panel dataset-panel">
+        <header class="panel-head">
+          <div class="panel-head-text">
+            <p class="section-kicker">数据源</p>
+            <h2>数据集与列</h2>
+          </div>
+          <span class="count-chip" id="colCount">—</span>
+        </header>
+        <div id="datasetInfo" class="dataset-info">尚未导入数据</div>
+
+        <div class="panel-block">
+          <div class="block-head"><span>工作表</span></div>
+          <div id="sheetList" class="sheet-list"></div>
+        </div>
+
+        <div class="panel-block grow">
+          <div class="block-head"><span>列</span><em id="colFilterHint">点击列名设为 X</em></div>
+          <input id="colFilter" class="input input-sm" type="search" placeholder="搜索列名…" autocomplete="off">
+          <div id="columnList" class="column-list"></div>
+        </div>
+
+        <div class="panel-block">
+          <div class="block-head"><span>派生列</span><em>不改动原始列</em></div>
+          <button id="btnTransform" class="btn btn-sm btn-block" type="button">生成新列（数据变换）</button>
+        </div>
+
+        <p class="panel-foot">点击列名设为 X 轴；数值列点「+Y」加入 Y 列表，也可直接拖过去。</p>
+      </section>
+    </aside>
+
+    <!-- 中栏：画布窗口 + 后端窗口 -->
+    <section class="center-column">
+      <section class="panel canvas-panel">
+        <header class="panel-head">
+          <div class="panel-head-text">
+            <p class="section-kicker">画布</p>
+            <h2>图表预览</h2>
+          </div>
+          <div class="chart-meta" id="chartMeta"></div>
+        </header>
+
+        <div class="canvas-area">
+          <div class="guide" id="guidePanel">
+            <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M6 41 V8"></path>
+              <path d="M6 41 H42"></path>
+              <path d="M11 33 L19 22 L27 27 L38 12"></path>
+              <circle cx="19" cy="22" r="2.2" fill="currentColor" stroke="none"></circle>
+              <circle cx="27" cy="27" r="2.2" fill="currentColor" stroke="none"></circle>
+              <circle cx="38" cy="12" r="2.2" fill="currentColor" stroke="none"></circle>
+            </svg>
+            <h2 id="guideTitle">拖拽 Excel / CSV 文件到这里</h2>
+            <p id="guideMsg">支持 .xlsx / .xls / .csv，自动识别多工作表；解析、统计与绘图全部在本机完成。</p>
+            <div class="fmt-row">
+              <span class="fmt-chip">.xlsx</span>
+              <span class="fmt-chip">.xls</span>
+              <span class="fmt-chip">.csv</span>
+            </div>
+            <div class="guide-actions">
+              <button id="btnImport2" class="btn btn-primary" type="button">选择文件</button>
+              <button id="btnGuideRetry" class="btn" type="button" hidden>重试渲染</button>
+            </div>
+
+            <div class="recent-wrap" id="recentWrap" hidden>
+              <div class="recent-title">最近打开</div>
+              <div class="recent-list" id="recentList"></div>
+            </div>
+          </div>
+
+          <div class="chart-wrap" id="chartWrap" hidden>
+            <!-- img 与占位层必须在同一个 transform 容器里，缩放/平移才不会错位 -->
+            <div class="chart-stage" id="chartStage">
+              <img id="chartImg" alt="图表预览" draggable="false">
+              <div class="geo-layer" id="chartGeoLayer"></div>
+              <div class="geo-drop" id="geoDrop" hidden></div>
+            </div>
+            <div class="zoom-hud" id="zoomHud" hidden>
+              <span class="zoom-label mono" id="zoomLabel">1.0×</span>
+              <button class="btn btn-sm btn-ghost zoom-reset" id="btnZoomReset" type="button" title="双击图片也可复位">复位</button>
+            </div>
+            <div class="render-overlay" id="renderOverlay" hidden>
+              <div class="spinner"></div>
+              <span id="overlayText">正在渲染…</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="download-bar">
+          <button class="btn btn-sm btn-accent" id="btnRender" type="button" title="重绘（R）">
+            <svg class="btn-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.6-3.7"/><path d="M13 3v3h-3"/></svg>
+            重绘
+          </button>
+          <span class="bar-sep"></span>
+          <span class="bar-label">下载</span>
+          <div class="dl-group">
+            <button class="btn btn-sm" id="btnDlPng" type="button" disabled>PNG</button>
+            <button class="btn btn-sm" id="btnDlSvg" type="button" disabled>SVG</button>
+            <button class="btn btn-sm" id="btnDlPdf" type="button" disabled>PDF</button>
+            <button class="btn btn-sm" id="btnDlEps" type="button" disabled>EPS</button>
+          </div>
+          <span class="spacer"></span>
+          <span class="muted mono" id="dpiHint">300 dpi</span>
+        </div>
+      </section>
+
+      <!-- 后端窗口：把服务与计算状态显式化 -->
+      <section class="panel backend-panel">
+        <header class="panel-head compact">
+          <div class="panel-head-text">
+            <p class="section-kicker">后端</p>
+            <h2>计算状态</h2>
+          </div>
+          <span class="status-pill" id="bkPill"><i></i>待命</span>
+        </header>
+        <div class="backend-grid">
+          <div class="readout"><span>服务地址</span><strong id="bkAddr" class="mono">127.0.0.1</strong></div>
+          <div class="readout"><span>解释器</span><strong id="bkPython" class="mono">—</strong></div>
+          <div class="readout"><span>上次渲染</span><strong id="bkElapsed" class="mono">—</strong></div>
+          <div class="readout"><span>数据规模</span><strong id="bkRows" class="mono">—</strong></div>
+        </div>
+        <p class="backend-msg" id="bkMsg" aria-live="polite">正在连接本地服务…</p>
+      </section>
+    </section>
+
+    <!-- 右栏：配置窗口 -->
+    <aside class="right-column">
+      <section class="panel config-panel">
+        <header class="panel-head">
+          <div class="panel-head-text">
+            <p class="section-kicker">配置</p>
+            <h2>绘图与统计</h2>
+          </div>
+        </header>
+
+        <div class="tabs" role="tablist">
+          <button class="tab active" type="button" data-tab="chart">图表</button>
+          <button class="tab" type="button" data-tab="fit">拟合</button>
+          <button class="tab" type="button" data-tab="stats">统计</button>
+          <button class="tab" type="button" data-tab="style">样式</button>
+        </div>
+
+        <div class="tab-body">
+          <!-- Tab 1 图表 -->
+          <div class="tab-panel" id="panel-chart">
+            <div class="group">
+              <div class="group-title">子图布局<em>点方块调整大小</em></div>
+              <div class="layout-row" id="layoutPicker">
+                <button class="btn btn-sm layout-btn is-active" type="button" data-grid="1,1" aria-pressed="true">1×1</button>
+                <button class="btn btn-sm layout-btn" type="button" data-grid="1,2" aria-pressed="false">1×2</button>
+                <button class="btn btn-sm layout-btn" type="button" data-grid="2,1" aria-pressed="false">2×1</button>
+                <button class="btn btn-sm layout-btn" type="button" data-grid="2,2" aria-pressed="false">2×2</button>
+              </div>
+              <div class="layout-custom">
+                <label class="layout-num"><span>行</span>
+                  <input id="inpGridRows" class="input" type="number" min="1" max="4" step="1" value="1" inputmode="numeric">
+                </label>
+                <span class="layout-x">×</span>
+                <label class="layout-num"><span>列</span>
+                  <input id="inpGridCols" class="input" type="number" min="1" max="4" step="1" value="1" inputmode="numeric">
+                </label>
+                <span class="grid-hint mono" id="gridHint">1×1</span>
+              </div>
+
+              <!-- 拼图板：一眼看清谁占哪几格，点方块打开子图设置 -->
+              <div class="layout-board" id="layoutBoard" hidden></div>
+              <div class="board-unplaced" id="boardUnplaced" hidden></div>
+              <div class="layout-actions">
+                <button class="btn btn-sm" id="btnAddPanel" type="button"
+                        title="在空位新增一个子图（复制当前子图的配置）">+ 新子图</button>
+                <span class="board-hint mono" id="boardHint">—</span>
+              </div>
+
+              <label class="check"><input id="chkShareAxes" type="checkbox"><span>共享坐标轴</span></label>
+              <!-- 画布跟着网格放大：不开的话子图一多，每格只能分到 1/N 的像素，
+                   曲线会明显变糊，字号也会被压下去 -->
+              <label class="check"><input id="chkCanvasGrow" type="checkbox" checked
+                     title="开启后：画布按行列数放大，每个子图仍是你设定的那一格图幅，清晰度和字号都不掉；导出要去投稿版面限宽时再关掉"><span>画布随子图放大<em>保证每格清晰</em></span></label>
+              <!-- 格子太小的时候（4×4、或图幅调得小）字号得跟着缩，不提示一下用户
+                   会以为是自己选的主题把字改小了 -->
+              <p class="layout-warn" id="layoutWarn" hidden></p>
+              <div class="panel-spans" id="spanBar" hidden>
+                <button class="btn btn-sm span-btn" id="btnSpanCols" type="button" aria-pressed="false">跨 2 列</button>
+                <button class="btn btn-sm span-btn" id="btnSpanRows" type="button" aria-pressed="false">跨 2 行</button>
+              </div>
+              <div class="panel-bar" id="panelBar" hidden></div>
+            </div>
+
+            <div class="group">
+              <div class="group-title">图表类型<em id="activePanelHint">面板 (a)</em></div>
+              <div id="chartTypeGrid" class="type-grid"></div>
+            </div>
+
+            <div class="group">
+              <div class="group-title">数据映射</div>
+              <label class="field"><span>X 列</span><select id="selX" class="input"></select></label>
+              <div class="field">
+                <span>Y 列<em id="yColHint">多选，可拖拽排序</em></span>
+                <div class="row-gap">
+                  <select id="selYAdd" class="input"></select>
+                  <button id="btnAddY" class="btn btn-sm" type="button">添加</button>
+                </div>
+                <div id="yList" class="chip-list"></div>
+              </div>
+              <div class="grid-2">
+                <label class="field"><span>X 误差列</span><select id="selXErr" class="input"></select></label>
+                <label class="field"><span>Y 误差列</span><select id="selYErr" class="input"></select></label>
+              </div>
+            </div>
+
+            <div class="group">
+              <!-- 多子图时逐个子图的刻度是独立的，不说清楚改的是哪张，用户会以为在改全部 -->
+              <div class="group-title">坐标轴<em id="axisPanelHint" hidden></em></div>
+              <!-- 共享坐标轴会把 scale 传播到整组共享轴，逐子图设的刻度不生效 -->
+              <p class="layout-warn" id="axisWarn" hidden></p>
+              <div class="grid-2">
+                <label class="field"><span>X 轴</span>
+                  <select id="selXScale" class="input">
+                    <option value="linear">线性 linear</option>
+                    <option value="log">对数 log</option>
+                  </select>
+                </label>
+                <label class="field"><span>Y 轴</span>
+                  <select id="selYScale" class="input">
+                    <option value="linear">线性 linear</option>
+                    <option value="log">对数 log</option>
+                  </select>
+                </label>
+              </div>
+              <p class="field-note" id="axis3dHint" hidden>三维图使用线性坐标</p>
+              <!-- 双纵轴：只有把某一列指派到右轴后才有意义，空着时藏起来免得占版面 -->
+              <div class="grid-2" id="y2Row" hidden>
+                <label class="field"><span>Y₂ 轴标签</span><input id="inpY2label" class="input" type="text" placeholder="留空则不显示"></label>
+                <label class="field"><span>Y₂ 轴刻度</span>
+                  <select id="selY2Scale" class="input">
+                    <option value="linear">线性 linear</option>
+                    <option value="log">对数 log</option>
+                  </select>
+                </label>
+              </div>
+              <label class="field"><span>标题</span><input id="inpTitle" class="input" type="text" placeholder="留空则不显示"></label>
+              <label class="field"><span>X 轴标签</span><input id="inpXlabel" class="input" type="text"></label>
+              <label class="field"><span>Y 轴标签</span><input id="inpYlabel" class="input" type="text"></label>
+            </div>
+
+            <div class="group">
+              <div class="group-title">图例与网格</div>
+              <div class="grid-2">
+                <label class="field"><span>图例位置</span>
+                  <select id="selLegendLoc" class="input">
+                    <option value="upper right">右上</option>
+                    <option value="upper left">左上</option>
+                    <option value="lower right">右下</option>
+                    <option value="lower left">左下</option>
+                    <option value="upper center">上中</option>
+                    <option value="lower center">下中</option>
+                    <option value="center">居中</option>
+                    <option value="best">自动最佳</option>
+                  </select>
+                </label>
+                <div class="check-col">
+                  <label class="check"><input id="chkGrid" type="checkbox" checked><span>网格</span></label>
+                  <label class="check"><input id="chkLegend" type="checkbox" checked><span>图例</span></label>
+                </div>
+              </div>
+            </div>
+
+            <div class="group">
+              <div class="group-title">数据行过滤<em>行号从 1 起</em></div>
+              <div class="grid-2">
+                <label class="field"><span>起始行</span><input id="inpRowStart" class="input input-sm" type="number" min="1" step="1" placeholder="不限"></label>
+                <label class="field"><span>结束行</span><input id="inpRowEnd" class="input input-sm" type="number" min="1" step="1" placeholder="不限"></label>
+              </div>
+            </div>
+
+            <div class="group">
+              <div class="group-title">高级</div>
+              <div class="grid-2">
+                <label class="field"><span>直方图分箱</span><input id="inpBins" class="input" type="number" min="3" max="200" step="1" value="20"></label>
+                <div class="check-col">
+                  <label class="check"><input id="chkKde" type="checkbox"><span>核密度曲线</span></label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 2 拟合 -->
+          <div class="tab-panel" id="panel-fit" hidden>
+            <div class="group">
+              <div class="group-title">拟合设置</div>
+              <label class="field"><span>模型</span><select id="selFitModel" class="input"></select></label>
+              <label class="field" id="degRow" hidden><span>多项式阶数</span>
+                <select id="inpDeg" class="input">
+                  <option value="2">2 阶</option>
+                  <option value="3">3 阶</option>
+                  <option value="4">4 阶</option>
+                  <option value="5">5 阶</option>
+                  <option value="6">6 阶</option>
+                </select>
+              </label>
+              <p class="hint">使用「图表」页选中的 X 列与第一个 Y 列。</p>
+              <div class="check-col">
+                <label class="check"><input id="chkUseYerr" type="checkbox"><span>按 Y 误差加权</span></label>
+                <label class="check"><input id="chkPredBand" type="checkbox" checked><span>显示 95% 预测带</span></label>
+                <label class="check"><input id="chkResidual" type="checkbox"><span>显示残差子图</span></label>
+              </div>
+              <button id="btnFit" class="btn btn-primary btn-block" type="button" title="Ctrl + Enter">执行拟合</button>
+            </div>
+            <div id="fitResult" class="result"></div>
+
+            <div class="group">
+              <div class="group-title">模型比较<em>按 AIC 排序</em></div>
+              <button id="btnFitCompare" class="btn btn-block" type="button">比较全部模型</button>
+              <p class="hint">9 个模型全部跑一遍，点表格任意一行即可用该模型重新拟合。</p>
+              <div id="fitCompare" class="result"></div>
+            </div>
+          </div>
+
+          <!-- Tab 3 统计 -->
+          <div class="tab-panel" id="panel-stats" hidden>
+            <div class="group">
+              <div class="group-title">描述统计</div>
+              <select id="selDescCols" class="input" multiple size="6"></select>
+              <div class="row-gap">
+                <button id="btnDescribe" class="btn btn-primary btn-sm" type="button">计算</button>
+                <button id="btnDescAll" class="btn btn-sm" type="button">全选数值列</button>
+                <button id="btnDescNone" class="btn btn-sm" type="button">清空</button>
+              </div>
+              <div id="descResult" class="result"></div>
+            </div>
+
+            <div class="group">
+              <div class="group-title">不确定度评定</div>
+              <label class="field"><span>测量列</span><select id="selUncCol" class="input"></select></label>
+              <div class="grid-2">
+                <label class="field"><span>最大允差 a</span><input id="inpDelta" class="input" type="number" step="any" placeholder="如 0.02"></label>
+                <label class="field"><span>分布</span>
+                  <select id="selDist" class="input">
+                    <option value="uniform">均匀（矩形）</option>
+                    <option value="triangular">三角</option>
+                    <option value="normal">正态</option>
+                  </select>
+                </label>
+              </div>
+              <div class="grid-2">
+                <label class="field"><span>置信概率</span>
+                  <select id="selConf" class="input">
+                    <option value="0.683">68.3%</option>
+                    <option value="0.95" selected>95%</option>
+                    <option value="0.9545">95.45%</option>
+                    <option value="0.99">99%</option>
+                    <option value="0.9973">99.73%</option>
+                  </select>
+                </label>
+                <label class="field"><span>包含因子 k</span><input id="inpCoverageK" class="input" type="number" step="any" value="2"></label>
+              </div>
+              <label class="field"><span>自定义 k<em>留空按分布计算</em></span><input id="inpCustomK" class="input" type="number" step="any" placeholder="可空"></label>
+              <button id="btnUnc" class="btn btn-primary btn-block" type="button">计算不确定度</button>
+              <div id="uncResult" class="result"></div>
+            </div>
+
+            <div class="group">
+              <div class="group-title">假设检验</div>
+              <label class="field"><span>检验类型</span><select id="selTest" class="input"></select></label>
+              <div class="grid-2">
+                <label class="field"><span>组 1 / 数据列</span><select id="selTestX" class="input"></select></label>
+                <label class="field"><span>组 2 / 对照列</span><select id="selTestY" class="input"></select></label>
+              </div>
+              <p class="hint" id="testHint"></p>
+              <div class="grid-3">
+                <label class="field"><span>μ₀</span><input id="inpMu" class="input" type="number" step="any" value="0"></label>
+                <label class="field"><span>α</span>
+                  <select id="selAlpha" class="input">
+                    <option value="0.05" selected>0.05</option>
+                    <option value="0.01">0.01</option>
+                    <option value="0.1">0.1</option>
+                  </select>
+                </label>
+                <label class="field"><span>单双侧</span>
+                  <select id="selAlt" class="input">
+                    <option value="two-sided">双侧</option>
+                    <option value="less">左侧</option>
+                    <option value="greater">右侧</option>
+                  </select>
+                </label>
+              </div>
+              <label class="check"><input id="chkEqualVar" type="checkbox" checked><span>假定方差相等</span></label>
+              <button id="btnTest" class="btn btn-primary btn-block" type="button">执行检验</button>
+              <div id="testResult" class="result"></div>
+            </div>
+          </div>
+
+          <!-- Tab 4 样式 -->
+          <div class="tab-panel" id="panel-style" hidden>
+            <div class="group">
+              <div class="group-title">主题</div>
+              <div id="themeGrid" class="theme-grid"></div>
+            </div>
+
+            <div class="group">
+              <div class="group-title">配色</div>
+              <div id="paletteGrid" class="palette-grid"></div>
+            </div>
+
+            <div class="group">
+              <div class="group-title">图幅<em>单位英寸</em></div>
+              <div class="grid-2">
+                <label class="field"><span>宽</span><input id="inpFigW" class="input" type="number" step="0.1" min="1" value="6.4"></label>
+                <label class="field"><span>高</span><input id="inpFigH" class="input" type="number" step="0.1" min="1" value="4.2"></label>
+              </div>
+              <div class="preset-row">
+                <button class="btn btn-sm preset-btn" type="button" data-w="3.5" data-h="2.6">单栏 3.5×2.6</button>
+                <button class="btn btn-sm preset-btn" type="button" data-w="7.1" data-h="3.5">双栏 7.1×3.5</button>
+                <button class="btn btn-sm preset-btn" type="button" data-w="4" data-h="4">方形 4×4</button>
+              </div>
+            </div>
+
+            <div class="group">
+              <div class="group-title">输出精度</div>
+              <div class="field">
+                <span>DPI<b id="valDpi">300</b></span>
+                <div class="dpi-input-row">
+                  <input id="inpDpi" class="input" type="number" inputmode="numeric"
+                         min="50" max="1200" step="10" value="300" aria-label="输出 DPI">
+                  <span class="dpi-unit">dpi</span>
+                </div>
+                <div class="dpi-presets" id="dpiPresets">
+                  <button class="btn btn-sm dpi-preset" type="button" data-dpi="72">72</button>
+                  <button class="btn btn-sm dpi-preset" type="button" data-dpi="96">96</button>
+                  <button class="btn btn-sm dpi-preset" type="button" data-dpi="150">150</button>
+                  <button class="btn btn-sm dpi-preset is-active" type="button" data-dpi="300">300</button>
+                  <button class="btn btn-sm dpi-preset" type="button" data-dpi="400">400</button>
+                  <button class="btn btn-sm dpi-preset" type="button" data-dpi="600">600</button>
+                  <button class="btn btn-sm dpi-preset" type="button" data-dpi="900">900</button>
+                  <button class="btn btn-sm dpi-preset" type="button" data-dpi="1200">1200</button>
+                </div>
+                <p class="field-note" id="dpiNote">72 屏幕预览 · 300 期刊最低 · 600 线条精细，也可直接填 50–1200</p>
+              </div>
+              <label class="field range-field"><span>字号<b id="valFont">11</b></span>
+                <input id="inpFont" type="range" min="6" max="24" step="0.5" value="11">
+              </label>
+              <label class="field range-field"><span>线宽<b id="valLine">1.6</b></span>
+                <input id="inpLine" type="range" min="0.4" max="5" step="0.1" value="1.6">
+              </label>
+              <label class="field range-field"><span>标记大小<b id="valMarker">5</b></span>
+                <input id="inpMarker" type="range" min="1" max="16" step="0.5" value="5">
+              </label>
+            </div>
+          </div>
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <!-- ================= 底部：表格窗口 + 输出窗口 ================= -->
+  <footer class="bottom">
+    <div class="bottom-head">
+      <div class="head-left">
+        <span class="bottom-title">数据表格</span>
+        <span id="tableMeta" class="muted"></span>
+        <span class="spacer"></span>
+        <button id="btnToggleBottom" class="btn btn-sm btn-ghost" type="button">收起</button>
+      </div>
+      <div class="head-right">
+        <span class="bottom-title">输出</span>
+        <span class="spacer"></span>
+        <button id="btnClearLog" class="btn btn-sm btn-ghost" type="button">清空</button>
+      </div>
+    </div>
+    <div class="bottom-body">
+      <div class="table-section">
+        <div id="previewTableWrap" class="table-wrap"></div>
+        <div class="pager">
+          <button id="pagePrev" class="btn btn-sm" type="button" disabled>上一页</button>
+          <span id="pageInfo" class="muted">—</span>
+          <button id="pageNext" class="btn btn-sm" type="button" disabled>下一页</button>
+          <span class="spacer"></span>
+          <span class="muted">每页 50 行</span>
+        </div>
+      </div>
+      <div class="log-section">
+        <div id="logPane" class="log-pane"></div>
+      </div>
+    </div>
+  </footer>
+
+  <footer class="app-footer">
+    <span>服务端渲染 · matplotlib 3.10 · 统计基于 numpy / scipy</span>
+    <span id="footNote">所有计算在 127.0.0.1 本地完成，数据不出本机</span>
+  </footer>
+</div>
+
+<div id="toastWrap" class="toast-wrap"></div>
+<div id="dropMask" class="drop-mask" hidden><div class="drop-mask-inner">松开以导入文件</div></div>
+
+<div id="modalMask" class="modal-mask" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <header class="modal-head">
+      <h3 id="modalTitle">弹窗</h3>
+      <button id="modalClose" class="btn btn-sm btn-ghost" type="button">关闭</button>
+    </header>
+    <div class="modal-body" id="modalBody"></div>
+    <footer class="modal-foot" id="modalFoot"></footer>
+  </div>
+</div>
+
+<!--
+  前端脚本按功能拆成 8 个文件，无打包器，靠 <script> 顺序加载：
+  每个文件是独立的 IIFE，执行完把自己的函数挂到 window 上，后续文件直接调用。
+  顺序不能改：01 是常量/状态/工具，02 起逐层依赖前面的文件。
+  （08-splitter.js 只做栏宽拖拽，不参与绘图逻辑，放最后即可。）
+-->
+<script src="./js/01-base.js"></script>
+<script src="./js/02-data.js"></script>
+<script src="./js/03-panel.js"></script>
+<script src="./js/04-spec.js"></script>
+<script src="./js/05-interact.js"></script>
+<script src="./js/06-analysis.js"></script>
+<script src="./js/07-ui.js"></script>
+<script src="./js/08-splitter.js"></script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+# ---------------- Python ----------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# ---------------- 导出产物（图和数据都在这里生成，不入库）----------------
+# 只保留目录结构：output/.gitkeep 与 output/ui2/.gitkeep
+# 界面验收脚本跑起来会往 output/ui2 写截图，所以那个目录也要留在仓库里
+output/*
+!output/.gitkeep
+!output/ui2/
+output/ui2/*
+!output/ui2/.gitkeep
+
+# ---------------- 运行时产物 ----------------
+logs/
+*.log
+
+# ---------------- 构建产物（launcher/build.bat 生成，需要时自己编译）----------------
+DataLab.exe
+launcher/*.exe
+launcher/bin/
+launcher/obj/
+
+# ---------------- 临时备份 ----------------
+_backup/
+
+# ---------------- 系统 ----------------
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# ---------------- 编辑器 ----------------
+.idea/
+*.swp
